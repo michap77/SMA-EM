@@ -3,6 +3,7 @@ services:
   sma-em:
     build: .
     container_name: sma-em
+    image: git.fritz.box/michael/sma-em
     volumes:
       - ./smaemd:/etc/smaemd
     network_mode: "host"
