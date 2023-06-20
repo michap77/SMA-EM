@@ -53,6 +53,7 @@ pvenums = {
         8001: 'Solar Inverter',
         8002: 'Wind Turbine Inverter',
         8007: 'Battery Inverter',
+        8009: 'Hybrid Inverter',
         8033: 'Consumer',
         8064: 'Sensor System in General',
         8065: 'Electricity meter',
@@ -414,6 +415,43 @@ pvenums = {
     }
 }
 
+def get_device_id(host, port):
+    client = ModbusClient(host=host, port=port)
+
+    # connects even within if clause
+    if client.connect() == False:
+        print('Modbus Connection Error: Could not connect to', host)
+        return None
+
+   
+    try:
+        received = client.read_input_registers(address=42109, count=4, unit=1)
+    except:
+        thisdate = str(datetime.datetime.now()).partition('.')[0]
+        thiserrormessage = thisdate + ': Connection not possible. Check settings or connection.'
+        print(thiserrormessage)
+        return None
+
+    regSusyId = [received.registers[0]]
+    regSNr    = [received.registers[1],received.registers[2]]
+    regUnitId = [received.registers[3]]
+    
+    message = BinaryPayloadDecoder.fromRegisters(regSusyId, byteorder=Endian.Big, wordorder=Endian.Big)
+    susyid = message.decode_16bit_uint()
+
+    message = BinaryPayloadDecoder.fromRegisters(regSNr, byteorder=Endian.Big, wordorder=Endian.Big)
+    serial = message.decode_32bit_uint()
+
+    message = BinaryPayloadDecoder.fromRegisters(regUnitId, byteorder=Endian.Big, wordorder=Endian.Big)
+    unitid = message.decode_16bit_uint()
+
+    client.close()
+
+    return {
+        'susyid': susyid,
+        'unitid': unitid,
+        'serial': serial
+    }
 
 def get_device_class(host, port, modbusid):
     client = ModbusClient(host=host, port=port)

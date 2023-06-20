@@ -235,6 +235,15 @@ registers = [
     ['30225', 'S32', 'FIX0', 'Isolation_Resistance', u'\u03a9']
     ]
 
+registers_hybrid = [
+    ['30843', 'S32', 'FIX3', 'BatteryAmp', 'A'],
+    ['30851', 'U32', 'FIX2', 'BatteryVolt', 'V'],
+    ['30845', 'U32', 'FIX0', 'BatteryCharge', u'\u0025'],
+    ['30847', 'U32', 'FIX0', 'BatteryCapacity', u'\u0025'],
+    ['30855', 'U32', 'FIX2', 'BatteryChargingVolt', 'V'],
+    ['30955', 'U32', 'ENUM', 'BatteryState', '']
+    ]
+
 registers_batt = [
 # Don't change names in this section as they are used by some features/*.py files
     ['30057', 'U32', 'RAW', 'serial', ''],

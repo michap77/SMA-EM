@@ -53,6 +53,7 @@
 
 import time
 from features.smamodbus import get_device_class
+from features.smamodbus import get_device_id
 from features.smamodbus import get_pv_data
 
 pv_last_update = 0
@@ -64,6 +65,9 @@ def run(emparts, config):
     global pv_debug
     global pv_last_update
     global pv_data
+
+    if (pv_debug > 1):
+        print("pv: data run")
 
     # Only update every X seconds
     if time.time() < pv_last_update + int(config.get('min_update', 20)):
@@ -78,9 +82,13 @@ def run(emparts, config):
     for inv in eval(config.get('inverters')):
         host, port, modbusid, manufacturer = inv
 
+        device_id = get_device_id(host, int(port))
         device_class = get_device_class(host, int(port), int(modbusid))
-        if device_class == "Solar Inverter":
+        if device_class == "Solar Inverter" or device_class == 'Hybrid Inverter':
             relevant_registers = eval(config.get('registers'))
+            if device_class == 'Hybrid Inverter' or device_id['susyid'] == 292:
+              hybrid_registers = eval(config.get('registers_hybrid'))
+              relevant_registers.extend(hybrid_registers)
             mdata = get_pv_data(host, int(port), int(modbusid), relevant_registers)
             pv_data.append(mdata)
         elif device_class == "Battery Inverter":
