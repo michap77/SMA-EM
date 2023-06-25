@@ -55,16 +55,20 @@ import time
 from features.smamodbus import get_device_class
 from features.smamodbus import get_device_id
 from features.smamodbus import get_pv_data
+from libs.Sun import Sun
 
 pv_last_update = 0
 pv_debug = 0
 pv_data = []
 
+inv_status = {}
 
 def run(emparts, config):
     global pv_debug
     global pv_last_update
     global pv_data
+
+    pv_debug = int(config.get('debug', 0))
 
     if (pv_debug > 1):
         print("pv: data run")
@@ -75,23 +79,115 @@ def run(emparts, config):
             print("pv: data skipping")
         return
 
+
     pv_last_update = time.time()
+
+    # check if it is already dark
+    # in that case we don't need to query inverter
+    sun = Sun()
+
+    # Default: Mittelpunkt Deutschlands
+    lat = float(config.get('latitude','51.163361'))
+    long = float(config.get('longitude','10.447683'))
+    coords = {
+        'latitude' : lat,
+        'longitude' : long
+         }
+    
+    isDark = sun.isDark(coords)
+
+    if (pv_debug > 1):
+        print(f"isDark: {isDark}")
+
     registers = eval(config.get('registers'))
 
     pv_data = []
     for inv in eval(config.get('inverters')):
         host, port, modbusid, manufacturer = inv
 
+        # if it is dark we only need to check for batterycharge.
+        # If battery is empty we only need to check again after sunrise
+        if isDark:
+
+            status = None
+            for k, v in inv_status.items():
+              if k == f"{host}:{port}:{modbusid}":
+                status = v
+                break
+
+            if (not status is None and (not status['hasBattery'] or status['BatteryCharge'] <= 0)):
+                #create new status
+                new_status = {}
+                for k, v in status.items():
+                    match k:
+                        case 'Status':
+                            new_status[k] = 'Off'
+                        case 'BatteryState':
+                            new_status[k] = 'NA'
+                        case ('AC Power' |
+                            'AC_Power_Apparent' |
+                            'AC_Current' |
+                            'AC_Voltage_L1' |
+                            'AC_Voltage_L2' |
+                            'AC_Voltage_L3' |
+                            'AC_Power_L1' |
+                            'AC_Power_L2' |
+                            'AC_Power_L3' |
+                            'Grid_Frequency' |
+                            'DC_Input1_Power' |
+                            'DC_Input1_Voltage' |
+                            'DC_Input1_Current' |
+                            'DC_Input2_Power' |
+                            'DC_Input2_Voltage' |
+                            'DC_Input2_Current' |
+                            'Device_Temperature' |
+                            'Intermediate_Circuit_Voltage' |
+                            'BatteryAmp' |
+                            'BatteryVolt' |
+                            'BatteryChargingVolt' |
+                            'BatteryTemp' |
+                            'AC apparent power' |
+                            'Power L1' |
+                            'Power L2' |
+                            'Power L3'):
+                            new_status[k] = 0
+                        case _:
+                            new_status[k] = v
+
+                if (pv_debug > 1):
+                    print(f"using nulled previous state: {new_status}")
+                inv_status[f"{host}:{port}:{modbusid}"] = new_status
+                pv_data.append(new_status)
+                continue
+
+        if (pv_debug > 1):
+            print("starting device request")
+
+        mdata = None
+        hasBattery = False
+
         device_id = get_device_id(host, int(port))
+        if device_id is None:
+            if (pv_debug > 0):
+                print("Error getting device_id")
+            continue
+
         device_class = get_device_class(host, int(port), int(modbusid))
+        if device_class is None:
+            if (pv_debug > 0):
+                print("Error getting device_class")
+            continue
+
         if device_class == "Solar Inverter" or device_class == 'Hybrid Inverter':
             relevant_registers = eval(config.get('registers'))
             if device_class == 'Hybrid Inverter' or device_id['susyid'] == 292:
-              hybrid_registers = eval(config.get('registers_hybrid'))
-              relevant_registers.extend(hybrid_registers)
+                hasBattery = True
+                hybrid_registers = eval(config.get('registers_hybrid'))
+                relevant_registers.extend(hybrid_registers)
             mdata = get_pv_data(host, int(port), int(modbusid), relevant_registers)
             pv_data.append(mdata)
         elif device_class == "Battery Inverter":
+            hasBattery = True
             relevant_registers = eval(config.get('registers_batt'))
             mdata = get_pv_data(host, int(port), int(modbusid), relevant_registers)
             pv_data.append(mdata)
@@ -99,6 +195,10 @@ def run(emparts, config):
             if (pv_debug > 1):
                 print("pv: unknown device class; skipping")
             pass
+
+        if not mdata is None:
+            inv_status[f"{host}:{port}:{modbusid}"] = mdata
+            inv_status[f"{host}:{port}:{modbusid}"]['hasBattery'] = hasBattery
 
     # query
     if pv_data is None:

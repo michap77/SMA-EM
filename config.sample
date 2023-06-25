@@ -190,6 +190,10 @@ min_update=5
 # debug output
 debug=0
 
+# for disabling during night sunset and sunrise is calclulated for given coords
+#latitude=51.163361
+#longitude=10.447683
+
 # inverter connection
 # ['host', 'port', 'modbus_id', 'manufacturer']
 inverters = [
