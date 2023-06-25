@@ -29,27 +29,34 @@ try:
     ipbind=parser.get('DAEMON', 'ipbind')
     pvdata = importlib.import_module('features.pvdata')
     pvconfig = dict(parser.items('FEATURE-pvdata'))
-except:
-    print('Cannot find config /etc/smaemd/config... using defaults')
+except Exception as e:
+    print (e)
+    print('Cannot find config ./smaemd/config... using defaults')
 
 try:
-    
-    emparts = {}
-    pvdata.run(emparts,pvconfig)
 
-    from features.pvdata import pv_data
+    counter = 0    
+    while counter < 6:
+        counter += 1
+
+        emparts = {}
+        pvdata.run(emparts,pvconfig)
+
+        from features.pvdata import pv_data
 
 
-    print ("pv_data")
-    if pv_data is not None:
-        for inv in pv_data:
-            pvserial = inv.get("serial")
-            payload = json.dumps(inv)
-            print("pvdata %s %s:%s" % (
-                pvserial,
-                format(time.strftime("%H:%M:%S",
-                                      time.localtime(time.time()))),
-                payload))
+        print ("pv_data")
+        if pv_data is not None:
+            for inv in pv_data:
+                pvserial = inv.get("serial")
+                payload = json.dumps(inv)
+                print("pvdata %s %s:%s" % (
+                    pvserial,
+                    format(time.strftime("%H:%M:%S",
+                                        time.localtime(time.time()))),
+                    payload))
+                
+        time.sleep(30)
 
 except Exception as e:
     print("sma-pvdata: Error publishing")
