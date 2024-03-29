@@ -11,14 +11,19 @@ COPY ./requirements.txt ./requirements.txt
 RUN pip3 install -r requirements.txt 
 
 RUN mkdir -p /opt/smaemd/features && mkdir -p /opt/smaemd/libs
-COPY features/* features/
-COPY libs/* libs/
-COPY daemon3x.py .
-COPY sma-daemon.py .
-COPY sma-em-capture-package.py .
-COPY sma-em-measurement.py .
-COPY speedwiredecoder.py .
+
+COPY daemon3x.py \
+sma-daemon.py \
+sma-em-capture-package.py \
+sma-em-measurement.py \
+speedwiredecoder.py ./
 
 COPY run_smaemd.sh /root/
 RUN chmod +x /root/*
+
 CMD ["/root/run_smaemd.sh"]
+
+COPY libs/* libs/
+
+COPY features/* features/
+
