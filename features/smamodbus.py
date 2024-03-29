@@ -541,3 +541,43 @@ def get_pv_data(host, port, modbusid, registers):
 
     client.close()
     return data
+
+
+def get_dummy_state(currentState, state):
+
+    new_status = {}
+    for k, v in currentState.items():
+        match k:
+            case 'Status':
+                new_status[k] = state
+            case ('AC Power' |
+                'AC_Power_Apparent' |
+                'AC_Current' |
+                'AC_Voltage_L1' |
+                'AC_Voltage_L2' |
+                'AC_Voltage_L3' |
+                'AC_Power_L1' |
+                'AC_Power_L2' |
+                'AC_Power_L3' |
+                'Grid_Frequency' |
+                'DC_Input1_Power' |
+                'DC_Input1_Voltage' |
+                'DC_Input1_Current' |
+                'DC_Input2_Power' |
+                'DC_Input2_Voltage' |
+                'DC_Input2_Current' |
+                'Device_Temperature' |
+                'Intermediate_Circuit_Voltage' |
+                'BatteryAmp' |
+                'BatteryVolt' |
+                'BatteryChargingVolt' |
+                'BatteryTemp' |
+                'AC apparent power' |
+                'Power L1' |
+                'Power L2' |
+                'Power L3'):
+                new_status[k] = 0
+            case _:
+                new_status[k] = v
+
+    return new_status

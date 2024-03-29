@@ -123,9 +123,18 @@ class Sun:
     def getSunsetTime( self, coords):
         return self.calcSunTime( coords, False )
 
-    def isDark( self, coords, time = datetime.datetime.now(datetime.UTC)):
+    def isDark( self, coords, time = None):
+
+        if time == None:
+            time = datetime.datetime.now(datetime.UTC)
+            
         sunrise = self.getSunriseTime(coords)
         sunset = self.getSunsetTime(coords)
+
+        print(f"is it dark at {time.isoformat()}")
+        print(f"location (lat {coords['latitude']}, long: {coords['longitude']})")
+        print(f"sunrise: {sunrise.isoformat()}")
+        print(f"sunset: {sunset.isoformat()}")
 
         return time < sunrise or time > sunset
 

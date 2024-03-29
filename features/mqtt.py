@@ -125,6 +125,8 @@ def run(emparts, config):
 
     # add pv data
     pvpower = 0
+    batpower = 0
+    batcharge = 0
     daily = 0
     try:
         from features.pvdata import pv_data
@@ -135,6 +137,11 @@ def run(emparts, config):
                 pass
             elif inv.get("DeviceClass") == "Solar Inverter":
                 pvpower += inv.get("AC Power", 0)
+                if inv.get("hasBattery") == True:
+                    if inv.get("BatteryState") == "Discharging":
+                        batpower += inv.get("BatteryVolt") * inv.get("BatteryAmp")
+                    if inv.get("BatteryState") == "Charging":
+                        batcharge += inv.get("BatteryChargingVolt") * inv.get("BatteryAmp")
                 # NOTE: daily yield is broken for some inverters
                 daily += inv.get("daily yield", 0)
 
@@ -144,6 +151,8 @@ def run(emparts, config):
         data['pvsum'] = pvpower
         data['pusage'] = pusage
         data['pvdaily'] = daily
+        data['batpower'] = batpower
+        data['batcharge'] = batcharge
     except:
         pv_data = None
         pass
@@ -185,6 +194,15 @@ def run(emparts, config):
                                                  time.localtime(
                                                      mqtt_last_update))),
                             payload))
+                        
+                    # publish each value as separate topic
+                    if publish_single == 1:
+                        for item in inv.keys():
+                            itemtopic = pvtopic + '/' + item
+                            if mqtt_debug > 0:
+                                print("mqtt: publishing %s:%s" % (itemtopic, inv[item]))
+                            client.publish(itemtopic, str(inv[item]))
+                            
         client.loop_stop()
         client.disconnect()
 

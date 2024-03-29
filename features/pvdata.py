@@ -52,8 +52,10 @@
 """
 
 import time
+import datetime
 from features.smamodbus import get_device_class
 from features.smamodbus import get_device_id
+from features.smamodbus import get_dummy_state
 from features.smamodbus import get_pv_data
 from libs.Sun import Sun
 
@@ -67,6 +69,7 @@ def run(emparts, config):
     global pv_debug
     global pv_last_update
     global pv_data
+    global inv_status
 
     pv_debug = int(config.get('debug', 0))
 
@@ -105,54 +108,19 @@ def run(emparts, config):
     for inv in eval(config.get('inverters')):
         host, port, modbusid, manufacturer = inv
 
+        status = None
+        for k, v in inv_status.items():
+            if k == f"{host}:{port}:{modbusid}":
+                status = v
+                break
+
         # if it is dark we only need to check for batterycharge.
         # If battery is empty we only need to check again after sunrise
         if isDark:
 
-            status = None
-            for k, v in inv_status.items():
-              if k == f"{host}:{port}:{modbusid}":
-                status = v
-                break
-
             if (not status is None and (not status['hasBattery'] or status['BatteryCharge'] <= 0)):
                 #create new status
-                new_status = {}
-                for k, v in status.items():
-                    match k:
-                        case 'Status':
-                            new_status[k] = 'Off'
-                        case 'BatteryState':
-                            new_status[k] = 'NA'
-                        case ('AC Power' |
-                            'AC_Power_Apparent' |
-                            'AC_Current' |
-                            'AC_Voltage_L1' |
-                            'AC_Voltage_L2' |
-                            'AC_Voltage_L3' |
-                            'AC_Power_L1' |
-                            'AC_Power_L2' |
-                            'AC_Power_L3' |
-                            'Grid_Frequency' |
-                            'DC_Input1_Power' |
-                            'DC_Input1_Voltage' |
-                            'DC_Input1_Current' |
-                            'DC_Input2_Power' |
-                            'DC_Input2_Voltage' |
-                            'DC_Input2_Current' |
-                            'Device_Temperature' |
-                            'Intermediate_Circuit_Voltage' |
-                            'BatteryAmp' |
-                            'BatteryVolt' |
-                            'BatteryChargingVolt' |
-                            'BatteryTemp' |
-                            'AC apparent power' |
-                            'Power L1' |
-                            'Power L2' |
-                            'Power L3'):
-                            new_status[k] = 0
-                        case _:
-                            new_status[k] = v
+                new_status = get_dummy_state(status,'Dark')
 
                 if (pv_debug > 1):
                     print(f"using nulled previous state: {new_status}")
@@ -170,12 +138,20 @@ def run(emparts, config):
         if device_id is None:
             if (pv_debug > 0):
                 print("Error getting device_id")
+            if (not status is None):
+                new_status = get_dummy_state(status,'Error')
+                new_status["Errormessage"] = "Error getting device_id"
+                pv_data.append(new_status)
             continue
 
         device_class = get_device_class(host, int(port), int(modbusid))
         if device_class is None:
             if (pv_debug > 0):
                 print("Error getting device_class")
+            if (not status is None):
+                new_status = get_dummy_state(status,'Error')
+                new_status["Errormessage"] = "Error getting device_class"
+                pv_data.append(new_status)
             continue
 
         if device_class == "Solar Inverter" or device_class == 'Hybrid Inverter':
@@ -209,6 +185,9 @@ def run(emparts, config):
     timestamp = time.time()
     for i in pv_data:
         i['timestamp'] = timestamp
+        i['datetime'] = datetime.datetime.fromtimestamp(timestamp).isoformat()
+        if not "Errormessage" in i:
+            i["Errormessage"] = ""
         if pv_debug > 0:
             print("PV:" + format(i))
 
