@@ -141,14 +141,14 @@ def run(emparts, config):
                     if inv.get("BatteryState") == "Discharging":
                         batpower += inv.get("BatteryVolt") * inv.get("BatteryAmp")
                     if inv.get("BatteryState") == "Charging":
-                        batcharge += inv.get("BatteryChargingVolt") * inv.get("BatteryAmp")
+                        batcharge += inv.get("BatteryChargingVolt") * abs(inv.get("BatteryAmp"))
                 # NOTE: daily yield is broken for some inverters
                 daily += inv.get("daily yield", 0)
 
         pconsume = emparts.get('pconsume', 0)
         psupply = emparts.get('psupply', 0)
         pusage = pvpower + pconsume - psupply
-        data['pvsum'] = pvpower
+        data['pvsum'] = pvpower + batcharge
         data['pusage'] = pusage
         data['pvdaily'] = daily
         data['batpower'] = batpower
