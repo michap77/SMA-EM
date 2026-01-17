@@ -221,6 +221,13 @@ class Sun:
         #10. convert UT value to local time zone of latitude/longitude
         hr = self.forceRange(int(UT), 24)
         min = int(round((UT - int(UT))*60,0))
+
+        # Wenn der Sonnenuntergang genau auf die Minute fällt, kann es passieren,
+        # dass durch das Runden 60 Minuten herauskommen. Das muss dann in die nächste Stunde umgewandelt werden.
+        if min >= 60:
+            hr = hr + 1
+            min = min - 60
+
         utcT = datetime.datetime(year,month,day,hr,min,0,0,datetime.UTC)
 
         #10. Return
